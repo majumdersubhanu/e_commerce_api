@@ -1,5 +1,5 @@
 import jwt
-from fastapi import FastAPI, Request, status, Depends
+from fastapi import FastAPI, Request, status, Depends, Form
 from tortoise.contrib.fastapi import register_tortoise
 
 from emails import send_email
@@ -25,7 +25,7 @@ oauth2_schema = OAuth2PasswordBearer(tokenUrl='token')
 
 
 @app.post('/token')
-async def token(request_form: OAuth2PasswordRequestForm = Depends()):
+async def generate_token(request_form: OAuth2PasswordRequestForm = Depends()):
     auth_token = await token_generator(request_form.username, request_form.password)
     return {'access_token': auth_token, 'token_type': 'Bearer'}
 
@@ -57,6 +57,7 @@ async def user_login(user: user_pydanticIn = Depends(get_current_user)):
             'business': {
                 'id': business.id,
                 'name': business.name,
+                'logo': config_credentials['BASE_URL'] + '/static/images/' + business.logo,
             }
         },
     }
@@ -92,7 +93,7 @@ register_tortoise(
 
 
 @app.get('/')
-async def root():
+async def landing_page():
     return {'message': 'Hello World'}
 
 
@@ -116,23 +117,22 @@ templates = Jinja2Templates(directory='templates')
 async def upload_image(file: UploadFile = File(...), user: user_pydanticIn = Depends(get_current_user)):
     FILEPATH = './static/images/'
     filename = file.filename
-    extension = filename.split('.')[1]
+    extension = filename.split('.')[-1]
 
     if extension not in ['jpg', 'jpeg', 'png']:
-        return {'status': 'error', 'message': 'Image must be JPG, JPEG or PNG'}
+        return {'status': 'error', 'message': 'Image must be JPG, JPEG, or PNG'}
 
     token_name = secrets.token_hex(10) + '.' + extension
     generated_name = FILEPATH + token_name
     file_content = await file.read()
 
-    with open(generated_name, 'rb').read() as file:
-        file.write(file_content)
+    # Open the file in write mode and save the content
+    with open(generated_name, 'wb') as f:
+        f.write(file_content)
 
     image = Image.open(generated_name)
     image = image.resize((200, 200))
     image.save(generated_name)
-
-    file.close()
 
     business = await Business.get(owner=user)
     owner = await business.owner
@@ -140,7 +140,7 @@ async def upload_image(file: UploadFile = File(...), user: user_pydanticIn = Dep
     if owner == user:
         business.logo = token_name
         await business.save()
-
+        return {'status': 'success', 'file_url': config_credentials['BASE_URL'] + generated_name[1:]}
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -166,3 +166,41 @@ async def email_verification(request: Request, token: str):
             }
         )
     return {'message': 'Email verification error'}
+
+
+@app.post('/upload/image/product/{product_id}')
+async def upload_product_image(product_id: int, file: UploadFile = File(...),
+                               user: user_pydanticIn = Depends(get_current_user)):
+    FILEPATH = './static/images/products/'
+    filename = file.filename
+    extension = filename.split('.')[-1]
+
+    if extension not in ['jpg', 'jpeg', 'png']:
+        return {'status': 'error', 'message': 'Image must be JPG, JPEG, or PNG'}
+
+    token_name = secrets.token_hex(10) + '.' + extension
+    generated_name = FILEPATH + token_name
+    file_content = await file.read()
+
+    # Open the file in write mode and save the content
+    with open(generated_name, 'wb') as f:
+        f.write(file_content)
+
+    image = Image.open(generated_name)
+    image = image.resize((800, 800))  # Adjust size as per your requirements
+    image.save(generated_name)
+
+    product = await Product.get(id=product_id)
+    business = await product.business
+    owner = await business.owner
+
+    if owner == user:
+        product_image = await ProductImage.create(image=token_name)
+        await product.product_images.add(product_image)
+        return {'status': 'success', 'filename': token_name}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='You are not allowed to upload an image',
+            headers={'WWW-Authenticate': 'Bearer'}
+        )

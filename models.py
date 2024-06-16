@@ -37,7 +37,7 @@ class Product(Model):
     original_price = fields.DecimalField(max_digits=10, decimal_places=2, null=False, default=0)
     current_price = fields.DecimalField(max_digits=10, decimal_places=2, null=False, default=0)
     percentage_discount = fields.DecimalField(max_digits=10, decimal_places=2, null=False, default=0)
-    offer_expiration_date = fields.DateField(default=datetime.datetime.now(datetime.UTC))
+    offer_expiration_date = fields.DateField(default=datetime.datetime.now(datetime.UTC).date())
     product_images = fields.ManyToManyField('models.ProductImage', related_name='product_images')
     business = fields.ForeignKeyField('models.Business', related_name='products', on_delete=fields.CASCADE)
 
