@@ -1,10 +1,9 @@
 import jwt
 from fastapi import FastAPI, Request, status, Depends, Form
 from tortoise.contrib.fastapi import register_tortoise
-
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from emails import send_email
 from models import *
-# from starlette.responses import HTMLResponse
 from authentication import *
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from tortoise.signals import post_save
@@ -18,10 +17,10 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
 app = FastAPI()
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 oauth2_schema = OAuth2PasswordBearer(tokenUrl='token')
+templates = Jinja2Templates(directory='templates')
 
 
 @app.post('/token')
@@ -77,16 +76,13 @@ async def create_business(
             owner=instance,
         )
         await business_pydantic.from_tortoise_orm(business_obj)
-        # send email
         await send_email([instance.email], instance)
 
 
 register_tortoise(
     app,
     db_url='postgres://postgres:postgres@localhost:5432/ecommerce',
-    modules={
-        'models': ['models']
-    },
+    modules={'models': ['models']},
     generate_schemas=True,
     add_exception_handlers=True,
 )
@@ -110,9 +106,6 @@ async def user_registration(user: user_pydanticIn):
     }
 
 
-templates = Jinja2Templates(directory='templates')
-
-
 @app.post('/upload/image/profile')
 async def upload_profile_image(file: UploadFile = File(...), user: user_pydanticIn = Depends(get_current_user)):
     FILEPATH = './static/images/'
@@ -126,7 +119,6 @@ async def upload_profile_image(file: UploadFile = File(...), user: user_pydantic
     generated_name = FILEPATH + token_name
     file_content = await file.read()
 
-    # Open the file in write mode and save the content
     with open(generated_name, 'wb') as f:
         f.write(file_content)
 
@@ -161,16 +153,13 @@ async def email_verification(request: Request, token: str):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e.detail),
-            headers={
-                'WWW-Authenticate': 'Bearer'
-            }
+            headers={'WWW-Authenticate': 'Bearer'}
         )
     return {'message': 'Email verification error'}
 
 
 @app.post('/upload/image/product/{product_id}')
-async def upload_product_image(product_id: int, file: UploadFile = File(...),
-                               user: User = Depends(get_current_user)):
+async def upload_product_image(product_id: int, file: UploadFile = File(...), user: User = Depends(get_current_user)):
     FILEPATH = './static/images/'
     filename = file.filename
     extension = filename.split('.')[-1]
@@ -182,7 +171,6 @@ async def upload_product_image(product_id: int, file: UploadFile = File(...),
     generated_name = FILEPATH + token_name
     file_content = await file.read()
 
-    # Open the file in write mode and save the content
     with open(generated_name, 'wb') as f:
         f.write(file_content)
 
@@ -195,11 +183,6 @@ async def upload_product_image(product_id: int, file: UploadFile = File(...),
     owner = await business.owner
 
     if owner == user:
-        # product_image = await ProductImage.create(image=token_name)
-        # await product_image.save()
-        # product.product_images.add(product_image)
-        # await product.save()
-        product = await Product.get(id=product_id).prefetch_related('product_images')
         product_image = await ProductImage.create(image=token_name)
         await product.product_images.add(product_image)
         await product.save()

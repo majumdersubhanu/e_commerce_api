@@ -2,9 +2,7 @@ from typing import List
 
 import jwt
 from fastapi import BackgroundTasks, UploadFile, File, Form, Depends, HTTPException, status
-
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-
 from dotenv import dotenv_values
 from pydantic import BaseModel, EmailStr
 
@@ -25,12 +23,11 @@ config = ConnectionConfig(
 )
 
 
-async def send_email(email: List, instance: User):
+async def send_email(email: List[str], instance: User):
     token_data = {
         'id': instance.id,
         'username': instance.username,
     }
-
     token = jwt.encode(token_data, config_credentials['SECRET'], algorithm='HS256')
 
     template = f"""
