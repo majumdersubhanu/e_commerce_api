@@ -114,7 +114,7 @@ templates = Jinja2Templates(directory='templates')
 
 
 @app.post('/upload/image/profile')
-async def upload_image(file: UploadFile = File(...), user: user_pydanticIn = Depends(get_current_user)):
+async def upload_profile_image(file: UploadFile = File(...), user: user_pydanticIn = Depends(get_current_user)):
     FILEPATH = './static/images/'
     filename = file.filename
     extension = filename.split('.')[-1]
@@ -170,8 +170,8 @@ async def email_verification(request: Request, token: str):
 
 @app.post('/upload/image/product/{product_id}')
 async def upload_product_image(product_id: int, file: UploadFile = File(...),
-                               user: user_pydanticIn = Depends(get_current_user)):
-    FILEPATH = './static/images/products/'
+                               user: User = Depends(get_current_user)):
+    FILEPATH = './static/images/'
     filename = file.filename
     extension = filename.split('.')[-1]
 
@@ -187,7 +187,7 @@ async def upload_product_image(product_id: int, file: UploadFile = File(...),
         f.write(file_content)
 
     image = Image.open(generated_name)
-    image = image.resize((800, 800))  # Adjust size as per your requirements
+    image = image.resize((800, 800))
     image.save(generated_name)
 
     product = await Product.get(id=product_id)
@@ -195,12 +195,61 @@ async def upload_product_image(product_id: int, file: UploadFile = File(...),
     owner = await business.owner
 
     if owner == user:
+        # product_image = await ProductImage.create(image=token_name)
+        # await product_image.save()
+        # product.product_images.add(product_image)
+        # await product.save()
+        product = await Product.get(id=product_id).prefetch_related('product_images')
         product_image = await ProductImage.create(image=token_name)
         await product.product_images.add(product_image)
-        return {'status': 'success', 'filename': token_name}
+        await product.save()
+        return {'status': 'success', 'file_url': config_credentials['BASE_URL'] + generated_name[1:]}
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='You are not allowed to upload an image',
             headers={'WWW-Authenticate': 'Bearer'}
         )
+
+
+@app.post('/products/create')
+async def create_product(product: product_pydanticIn, user: user_pydanticIn = Depends(get_current_user)):
+    product = product.dict(exclude_unset=True)
+
+    if product['original_price'] > 0:
+        product['percentage_discount'] = (product['original_price'] - product['current_price']) / product[
+            'original_price'] * 100
+
+        product_obj = await Product.create(**product, business=user)
+        product_obj = await product_pydanticIn.from_tortoise_orm(product_obj)
+
+        return {
+            'status': 'success',
+            'data': product_obj,
+        }
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='You are not allowed to upload a product',
+            headers={'WWW-Authenticate': 'Bearer'}
+        )
+
+
+@app.get('/products')
+async def get_products():
+    products = Product.all().prefetch_related('product_images')
+    response = await product_pydantic.from_queryset(products)
+    return {
+        'status': 'ok',
+        'data': response,
+    }
+
+
+@app.get('/products/{product_id}')
+async def get_product(product_id: int):
+    response = await Product.get(id=product_id)
+    return {
+        'status': 'ok',
+        'data': response
+    }
