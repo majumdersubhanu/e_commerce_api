@@ -12,8 +12,14 @@ from typing import List, Optional, Type
 from tortoise import BaseDBAsyncClient
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi import File, UploadFile
+import secrets
+from fastapi.staticfiles import StaticFiles
+from PIL import Image
 
 app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 oauth2_schema = OAuth2PasswordBearer(tokenUrl='token')
 
@@ -104,6 +110,43 @@ async def user_registration(user: user_pydanticIn):
 
 
 templates = Jinja2Templates(directory='templates')
+
+
+@app.post('/upload/image/profile')
+async def upload_image(file: UploadFile = File(...), user: user_pydanticIn = Depends(get_current_user)):
+    FILEPATH = './static/images/'
+    filename = file.filename
+    extension = filename.split('.')[1]
+
+    if extension not in ['jpg', 'jpeg', 'png']:
+        return {'status': 'error', 'message': 'Image must be JPG, JPEG or PNG'}
+
+    token_name = secrets.token_hex(10) + '.' + extension
+    generated_name = FILEPATH + token_name
+    file_content = await file.read()
+
+    with open(generated_name, 'rb').read() as file:
+        file.write(file_content)
+
+    image = Image.open(generated_name)
+    image = image.resize((200, 200))
+    image.save(generated_name)
+
+    file.close()
+
+    business = await Business.get(owner=user)
+    owner = await business.owner
+
+    if owner == user:
+        business.logo = token_name
+        await business.save()
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='You are not allowed to upload an image',
+            headers={'WWW-Authenticate': 'Bearer'}
+        )
 
 
 @app.get('/verification', response_class=HTMLResponse)
