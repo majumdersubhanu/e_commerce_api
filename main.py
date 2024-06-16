@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Request, status
+import jwt
+from fastapi import FastAPI, Request, status, Depends
 from tortoise.contrib.fastapi import register_tortoise
 
 from emails import send_email
@@ -14,7 +15,46 @@ from fastapi.templating import Jinja2Templates
 
 app = FastAPI()
 
-oauth2_schema = OAuth2PasswordBearer()
+oauth2_schema = OAuth2PasswordBearer(tokenUrl='token')
+
+
+@app.post('/token')
+async def token(request_form: OAuth2PasswordRequestForm = Depends()):
+    auth_token = await token_generator(request_form.username, request_form.password)
+    return {'access_token': auth_token, 'token_type': 'Bearer'}
+
+
+async def get_current_user(auth_token: str = Depends(oauth2_schema)):
+    try:
+        payload = jwt.decode(auth_token, config_credentials['SECRET'], algorithms=['HS256'])
+        user = await User.get(id=payload['id'])
+        return await user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Token expired',
+                            headers={'WWW-Authenticate': 'Bearer'})
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid token',
+                            headers={'WWW-Authenticate': 'Bearer'})
+
+
+@app.post('/user/me')
+async def user_login(user: user_pydanticIn = Depends(get_current_user)):
+    business = await Business.get(owner=user)
+    return {
+        'status': 'OK',
+        'data': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'is_verified': user.is_verified,
+            'joined_date': user.join_date.strftime('%b %d %Y'),
+            'business': {
+                'id': business.id,
+                'name': business.name,
+            }
+        },
+    }
+
 
 @post_save(User)
 async def create_business(
