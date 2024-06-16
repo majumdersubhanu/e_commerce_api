@@ -5,6 +5,7 @@ from emails import send_email
 from models import *
 # from starlette.responses import HTMLResponse
 from authentication import *
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from tortoise.signals import post_save
 from typing import List, Optional, Type
 from tortoise import BaseDBAsyncClient
@@ -13,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 
 app = FastAPI()
 
+oauth2_schema = OAuth2PasswordBearer()
 
 @post_save(User)
 async def create_business(
@@ -66,17 +68,18 @@ templates = Jinja2Templates(directory='templates')
 
 @app.get('/verification', response_class=HTMLResponse)
 async def email_verification(request: Request, token: str):
-    user = await verify_token(token)
-
-    if user and not user.is_verified:
-        user.is_verified = True
-        await user.save()
-        return templates.TemplateResponse('verification.html', {'request': request, 'username': User.username})
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail='Email verification error',
-        headers={
-            'WWW-Authenticate': 'Bearer'
-        }
-    )
+    try:
+        user = await verify_token(token)
+        if user and not user.is_verified:
+            user.is_verified = True
+            await user.save()
+            return templates.TemplateResponse('verification.html', {'request': request, 'username': user.username})
+    except HTTPException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e.detail),
+            headers={
+                'WWW-Authenticate': 'Bearer'
+            }
+        )
+    return {'message': 'Email verification error'}

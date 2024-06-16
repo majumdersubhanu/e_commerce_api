@@ -18,9 +18,25 @@ def generate_hashed_password(password):
 async def verify_token(token: str):
     try:
         payload = jwt.decode(token, config_credentials['SECRET'], algorithms=['HS256'])
-        user = await User.get(payload.get('id'))
-
-    except jwt.exceptions.InvalidTokenError:
+        user = await User.get(id=payload.get('id'))
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='User not found',
+                headers={
+                    'WWW-Authenticate': 'Bearer'
+                }
+            )
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Token expired',
+            headers={
+                'WWW-Authenticate': 'Bearer'
+            }
+        )
+    except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Invalid token',
@@ -28,5 +44,3 @@ async def verify_token(token: str):
                 'WWW-Authenticate': 'Bearer'
             }
         )
-
-    return user

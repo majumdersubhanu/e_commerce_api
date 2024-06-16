@@ -35,30 +35,31 @@ async def send_email(email: List, instance: User):
 
     template = f"""
     <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account Verification</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-100">
-    <div class="max-w-lg mx-auto my-10 bg-white p-8 rounded-lg shadow-lg">
-        <!-- <div class="text-center mb-6">
-            <img src="your-logo-url.png" alt="Company Logo" class="mx-auto w-24">
-        </div> -->
-        <div class="text-center">
-            <h2 class="text-2xl font-semibold mb-4">Account Verification</h2>
-            <p class="text-gray-700 mb-6">Thank you for registering with us. Please verify your email address by clicking the button below to complete your registration and unlock a seamless shopping experience.</p>
-            <a href="{config_credentials['BASE_URL']}/verification/?token={token}" class="inline-block px-6 py-3 text-white bg-blue-500 rounded-lg shadow hover:bg-blue-600">Verify Email</a>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Account Verification</title>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-100">
+        <div class="max-w-lg mx-auto my-10 bg-white p-8 rounded-lg shadow-lg">
+            <div class="text-center mb-6">
+                <!-- Optionally, add a logo here -->
+                <h1 class="text-3xl font-semibold text-gray-800">The Bee Store</h1>
+            </div>
+            <div class="text-center">
+                <h2 class="text-2xl font-semibold mb-4">Account Verification</h2>
+                <p class="text-gray-700 mb-6">Thank you for registering with us. Please verify your email address by clicking the button below to complete your registration and unlock a seamless shopping experience.</p>
+                <a href="{config_credentials['BASE_URL']}/verification/?token={token}" class="inline-block px-6 py-3 text-white bg-blue-500 rounded-lg shadow hover:bg-blue-600">Verify Email</a>
+            </div>
+            <div class="text-center mt-6 text-gray-600 text-sm">
+                <p>If you did not create an account, please ignore this email.</p>
+                <p>2024 The Bee Store. All rights reserved.</p>
+            </div>
         </div>
-        <div class="text-center mt-6 text-gray-600 text-sm">
-            <p>If you did not create an account, please ignore this email.</p>
-            <p>2024 The Bee Store. All rights reserved.</p>
-        </div>
-    </div>
-</body>
-</html>
+    </body>
+    </html>
     """
 
     message = MessageSchema(
