@@ -236,3 +236,52 @@ async def get_product(product_id: int):
         'status': 'ok',
         'data': response
     }
+
+
+@app.delete('/products/{product_id}')
+async def delete_product(product_id: int, user: user_pydanticIn = Depends(get_current_user)):
+    response = await Product.get(id=product_id)
+
+    product = await Product.get(id=product_id)
+    business = await product.business
+    owner = await business.owner
+
+    if owner == user:
+        await response.delete()
+
+        return {
+            'status': 'ok',
+            'message': 'Product deleted',
+        }
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='You are not allowed to delete this product',
+            headers={'WWW-Authenticate': 'Bearer'}
+        )
+
+
+@app.put('/products/{product_id}')
+async def update_product(product_id: int, product: product_pydanticIn, user: User = Depends(get_current_user)):
+    response = await Product.get(id=product_id)
+
+    product_info = await Product.get(id=product_id)
+    business = await product_info.business
+    owner = await business.owner
+
+    if owner == user:
+        product_data = product.dict(exclude_unset=True)
+        await response.update_from_dict(product_data)
+        await response.save()
+
+        return {
+            'status': 'ok',
+            'message': 'Product updated',
+        }
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='You are not allowed to update this product',
+            headers={'WWW-Authenticate': 'Bearer'}
+        )
