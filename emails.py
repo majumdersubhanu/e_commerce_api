@@ -43,7 +43,7 @@ async def send_email(email: List[str], instance: User):
         <div class="max-w-lg mx-auto my-10 bg-white p-8 rounded-lg shadow-lg">
             <div class="text-center mb-6">
                 <!-- Optionally, add a logo here -->
-                <h1 class="text-3xl font-semibold text-gray-800">The Bee Store</h1>
+                <h1 class="text-3xl font-semibold text-gray-800">Your Store Name</h1>
             </div>
             <div class="text-center">
                 <h2 class="text-2xl font-semibold mb-4">Account Verification</h2>
@@ -52,7 +52,7 @@ async def send_email(email: List[str], instance: User):
             </div>
             <div class="text-center mt-6 text-gray-600 text-sm">
                 <p>If you did not create an account, please ignore this email.</p>
-                <p>2024 The Bee Store. All rights reserved.</p>
+                <p>2024 Your Store Name. All rights reserved.</p>
             </div>
         </div>
     </body>
@@ -60,7 +60,7 @@ async def send_email(email: List[str], instance: User):
     """
 
     message = MessageSchema(
-        subject='The Bee Store Account verification email',
+        subject='Your Store Name Account verification email',
         recipients=email,
         body=template,
         subtype='html'

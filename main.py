@@ -101,7 +101,7 @@ async def user_registration(user: user_pydanticIn):
     new_user = await user_pydantic.from_tortoise_orm(user_obj)
     return {
         'status': 'ok',
-        'user': f'Hello {new_user.username}, welcome to the Bee store. Please click on the link sent to your registered '
+        'user': f'Hello {new_user.username}, welcome to Your Store Name. Please click on the link sent to your registered '
                 f'email address to verify your account and continuing shopping.',
     }
 
