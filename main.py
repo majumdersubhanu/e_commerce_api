@@ -195,6 +195,43 @@ async def upload_product_image(product_id: int, file: UploadFile = File(...), us
         )
 
 
+@app.post('/upload/image/product/featured/{product_id}')
+async def upload_featured_image(product_id: int, file: UploadFile = File(...), user: User = Depends(get_current_user)):
+    FILEPATH = './static/images/'
+    filename = file.filename
+    extension = filename.split('.')[-1]
+
+    if extension not in ['jpg', 'jpeg', 'png']:
+        return {'status': 'error', 'message': 'Image must be JPG, JPEG, or PNG'}
+
+    token_name = secrets.token_hex(10) + '.' + extension
+    generated_name = FILEPATH + token_name
+    file_content = await file.read()
+
+    with open(generated_name, 'wb') as f:
+        f.write(file_content)
+
+    image = Image.open(generated_name)
+    image = image.resize((800, 800))
+    image.save(generated_name)
+
+    product = await Product.get(id=product_id)
+    business = await product.business
+    owner = await business.owner
+
+    if owner == user:
+        product_image = await ProductImage.create(image=token_name)
+        product.featured_image = product_image
+        await product.save()
+        return {'status': 'success', 'file_url': config_credentials['BASE_URL'] + generated_name[1:]}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='You are not allowed to upload an image',
+            headers={'WWW-Authenticate': 'Bearer'}
+        )
+
+
 @app.post('/products/create')
 async def create_product(product: product_pydanticIn, user: user_pydanticIn = Depends(get_current_user)):
     product = product.dict(exclude_unset=True)
@@ -221,8 +258,7 @@ async def create_product(product: product_pydanticIn, user: user_pydanticIn = De
 
 @app.get('/products')
 async def get_products():
-    products = Product.all().prefetch_related('product_images')
-    response = await product_pydantic.from_queryset(products)
+    response = await Product.all()
     return {
         'status': 'ok',
         'data': response,
@@ -235,6 +271,33 @@ async def get_product(product_id: int):
     return {
         'status': 'ok',
         'data': response
+    }
+
+
+@app.get('/products/images/{product_id}')
+async def get_product_images(product_id: int):
+    product = await Product.get(id=product_id).prefetch_related('product_images')
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    product_images = await productImage_pydantic.from_queryset(product.product_images.all())
+    return {
+        'status': 'ok',
+        'product_images': [(config_credentials['BASE_URL'] + '/static/images/' + x.image) for x in product_images]
+    }
+
+
+@app.get('/product/images/featured/{product_id}')
+async def get_featured_image(product_id: int):
+    product = await Product.get(id=product_id).prefetch_related('featured_image')
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    featured_image = product.featured_image
+    return {
+        'status': 'ok',
+        'featured_image': config_credentials['BASE_URL'] + '/static/images/' + featured_image.image
     }
 
 
@@ -271,7 +334,7 @@ async def update_product(product_id: int, product: product_pydanticIn, user: Use
     owner = await business.owner
 
     if owner == user:
-        product_data = product.dict(exclude_unset=True)
+        product_data = product.dict(exclude_unset=True)  # Use exclude_unset=True to allow partial updates
         await response.update_from_dict(product_data)
         await response.save()
 

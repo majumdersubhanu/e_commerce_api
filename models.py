@@ -10,7 +10,7 @@ class User(Model):
     email = fields.CharField(max_length=100, unique=True)
     password = fields.CharField(max_length=100)
     is_verified = fields.BooleanField(default=False)
-    join_date = fields.DatetimeField(default=datetime.datetime.now(datetime.UTC))
+    join_date = fields.DatetimeField(default=datetime.datetime.now(datetime.UTC).date())
 
 
 class Business(Model):
@@ -37,6 +37,7 @@ class Product(Model):
     current_price = fields.DecimalField(max_digits=10, decimal_places=2, default=0)
     percentage_discount = fields.DecimalField(max_digits=10, decimal_places=2, default=0)
     offer_expiration_date = fields.DateField(default=datetime.datetime.now(datetime.UTC).date())
+    featured_image = fields.ForeignKeyField('models.ProductImage', related_name='featured_in_products', null=True)
     product_images = fields.ManyToManyField('models.ProductImage', related_name='product_images')
     business = fields.ForeignKeyField('models.Business', related_name='products', on_delete=fields.CASCADE)
 
@@ -51,5 +52,6 @@ business_pydanticIn = pydantic_model_creator(Business, name='BusinessIn', exclud
 
 productImage_pydantic = pydantic_model_creator(ProductImage, name='ProductImage')
 
-product_pydantic = pydantic_model_creator(Product, name='Product')
 product_pydanticIn = pydantic_model_creator(Product, name='ProductIn', exclude=('percentage_discount', 'id'))
+product_pydanticOut = pydantic_model_creator(Product, name='ProductOut', exclude=('product_images',))
+product_pydantic_with_featuredOut = pydantic_model_creator(Product, name='Product')
