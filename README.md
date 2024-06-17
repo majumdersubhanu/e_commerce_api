@@ -62,13 +62,6 @@ Make sure PostgreSQL is running and create a database named `ecommerce`:
 CREATE DATABASE ecommerce;
 ```
 
-### Run Migrations
-Apply the database migrations using Alembic:
-
-```bash
-alembic upgrade head
-```
-
 ## Running the Server
 
 ### Start the Server
