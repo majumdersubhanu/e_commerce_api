@@ -81,7 +81,7 @@ async def create_business(
 
 register_tortoise(
     app,
-    db_url='postgres://postgres:postgres@localhost:5432/ecommerce',
+    db_url=f'postgres://{config_credentials['DB_USERNAME']}:{config_credentials['DB_PASSWORD']}@{config_credentials['DB_HOST']}:{config_credentials['DB_PORT']}/{config_credentials['DB_NAME']}',
     modules={'models': ['models']},
     generate_schemas=True,
     add_exception_handlers=True,
