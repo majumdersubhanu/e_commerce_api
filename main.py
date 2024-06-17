@@ -348,3 +348,8 @@ async def update_product(product_id: int, product: product_pydanticIn, user: Use
             detail='You are not allowed to update this product',
             headers={'WWW-Authenticate': 'Bearer'}
         )
+
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run(app)
